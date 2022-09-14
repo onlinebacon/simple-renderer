@@ -1,0 +1,103 @@
+<canvas></canvas>
+<script>
+	const degToRad = (deg) => deg/180*Math.PI;
+	const H_FOV = degToRad(90);
+	const viewport = { width: 800, height: 600 };
+	const FOV_DX = Math.tan(H_FOV/2);
+	const FOV_DY = FOV_DX/viewport.width*viewport.height;
+	const canvas = document.querySelector('canvas');
+	canvas.width = viewport.width;
+	canvas.height = viewport.height;
+	const ctx = canvas.getContext('2d');
+	const perspectiveProjection = ([ x, y, z ]) => {};
+	const projectVertex = ([ x, y, z ]) => [
+		viewport.width*(1 + x/(z*FOV_DX))*0.5,
+		viewport.height*(1 - y/(z*FOV_DY))*0.5,
+	];
+	const clear = () => {
+		ctx.fillStyle = '#222';
+		ctx.fillRect(0, 0, viewport.width, viewport.height);
+	};
+	const renderObject3D = ({ vertices, lines }) => {
+		ctx.strokeStyle = '#ccc';
+		ctx.beginPath();
+		vertices = vertices.map(projectVertex);
+		for (const line of lines) {
+			const [ ia, ib ] = line;
+			const a = vertices[ia];
+			const b = vertices[ib];
+			ctx.moveTo(a[0], a[1]);
+			ctx.lineTo(b[0], b[1]);
+		}
+		ctx.stroke();
+	};
+	class Object3D {
+		constructor() {
+			this.lines = [];
+			this.vertices = [];
+		}
+		addVertex(vertex) {
+			this.vertices.push(vertex);
+			return this;
+		}
+		addLine(...lines) {
+			this.lines.push(...lines);
+			return this;
+		}
+		translate([ x, y, z ]) {
+			for (const vertex of this.vertices) {
+				vertex[0] += x;
+				vertex[1] += y;
+				vertex[2] += z;
+			}
+			return this;
+		}
+		rotateY(angle) {
+			const sin = Math.sin(angle);
+			const cos = Math.cos(angle);
+			for (const vertex of this.vertices) {
+				const [ x, y, z ] = vertex;
+				vertex[0] = x*cos + z*sin;
+				vertex[1] = y;
+				vertex[2] = x*-sin + z*cos;
+			}
+			return this;
+		}
+		rotateX(angle) {
+			const sin = Math.sin(angle);
+			const cos = Math.cos(angle);
+			for (const vertex of this.vertices) {
+				const [ x, y, z ] = vertex;
+				vertex[0] = x;
+				vertex[1] = y*cos + z*-sin;
+				vertex[2] = y*sin + z*cos;
+			}
+			return this;
+		}
+	}
+	const buildCube = () => {
+		const cube = new Object3D();
+		for (let i=0; i<8; ++i) {
+			const x = ((i>>0)&1)*2 - 1;
+			const y = ((i>>1)&1)*2 - 1;
+			const z = ((i>>2)&1)*2 - 1;
+			cube.addVertex([ x, y, z ]);
+		}
+		cube.addLine(
+			[0, 1], [2, 3], [0, 2], [1, 3], // Front face
+			[4, 5], [6, 7], [4, 6], [5, 7], // Back face
+			[0, 4], [1, 5], [2, 6], [3, 7], // Connecting both faces
+		)
+		return cube;
+	};
+	const frame = () => {
+		clear();
+		const cube = buildCube();
+		cube.rotateX(Date.now()*1.2e-3);
+		cube.rotateY(Date.now()*1.1e-3);
+		cube.translate([ 0, 0, 10 ]);
+		renderObject3D(cube);
+		requestAnimationFrame(frame);
+	};
+	frame();
+</script>
